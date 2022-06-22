@@ -117,7 +117,11 @@ class Dataset:
             if os.path.exists(os.path.join(local_cache_dir, self.dataset_name + suffix)):
                 dataset_path = os.path.join(local_cache_dir, self.dataset_name + suffix)
             else:
-                raise OSError('File not found: ' + os.path.join(local_cache_dir, self.dataset_name + suffix))
+                #raise OSError('File not found: ' + os.path.join(local_cache_dir, self.dataset_name + suffix))
+                dataset_path = self.get_dataset_url(suffix)
+                if not os.path.exists(local_cache_dir):
+                    os.makedirs(local_cache_dir)
+
         dataset = pd.read_csv(dataset_path, sep='\t', compression='gzip')
         if not os.path.exists(os.path.join(local_cache_dir, self.dataset_name + suffix)):
             dataset.to_csv(os.path.join(local_cache_dir, self.dataset_name + suffix), sep='\t', compression='gzip',

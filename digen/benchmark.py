@@ -38,6 +38,8 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from . import initialize, load_datasets
 from .dataset import Dataset
+import time
+
 
 rcParams.update({'figure.autolayout': True})
 
@@ -164,7 +166,7 @@ class Benchmark:
         dataset = Dataset(self._fullname(dataset_name))
         return dataset.load_dataset(separate_target=separate_target, local_cache_dir=local_cache_dir)
 
-    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None):
+    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None, use_predict_proba=False):
         '''
         The method that optimizes hyper-parameters for a single or multiple DIGEN datasets.
 
@@ -216,11 +218,18 @@ class Benchmark:
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2,
                                                                 random_state=random_state)
 
-            study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state),
+            start = time.time()
+            study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state, use_predict_proba=use_predict_proba),
                            n_trials=self.n_trials, timeout=self.timeout)
+            duration = start-time.time()
+
             best_models[dataset_name] = \
                 self.evaluate(clone(est).set_params(**study.best_trial.user_attrs['params']), dataset_name,
                               local_cache_dir)[dataset_name]
+            
+            best_models[dataset_name]['duration'] = duration
+
+
         best_models['name'] = est.__class__.__name__
         return best_models
 
@@ -282,7 +291,7 @@ class Benchmark:
         results['name'] = new_est.__class__.__name__
         return results
 
-    def _objective(self, trial, X, y, estimator, parameter_scopes, random_state):
+    def _objective(self, trial, X, y, estimator, parameter_scopes, random_state, use_predict_proba=False):
         '''
         An internal method that sets Optuna parameters and objective for hyper-parameter optimization
         '''
@@ -311,7 +320,13 @@ class Benchmark:
                 y_test = y.iloc[test_idx]
 
             est.fit(X_train, y_train)
-            auroc_test = roc_auc_score(y_test, est.predict(X_test))
+
+            if use_predict_proba and hasattr(est, "predict_proba"):
+                y_test_proba = est.predict_proba(X_test)[:, 1]
+            else:
+                y_test_proba = est.predict(X_test)
+
+            auroc_test = roc_auc_score(y_test, y_test_proba)
             trial.set_user_attr('split_id', split_num)
             trial.set_user_attr('fold' + str(split_num) + '_auroc', auroc_test)
             splits_auc.append(auroc_test)
@@ -568,6 +583,8 @@ class Benchmark:
         fig.cax.set_position([col.x0 + 1, col.y0 - 0.35, col.width, col.height])
 
         return fig, ax
+
+
 
 
 if __name__ == '__main__':
