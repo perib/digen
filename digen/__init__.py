@@ -44,4 +44,6 @@ from .dataset import (
     Dataset
 )
 
+from . import defaults
+
 from .benchmark import __version__

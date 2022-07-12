@@ -166,7 +166,7 @@ class Benchmark:
         dataset = Dataset(self._fullname(dataset_name))
         return dataset.load_dataset(separate_target=separate_target, local_cache_dir=local_cache_dir)
 
-    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None, use_predict_proba=False):
+    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None, use_predict_proba=False, n_jobs=1):
         '''
         The method that optimizes hyper-parameters for a single or multiple DIGEN datasets.
 
@@ -218,16 +218,16 @@ class Benchmark:
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2,
                                                                 random_state=random_state)
 
-            start = time.time()
+            start = time.process_time_ns()
             study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state, use_predict_proba=use_predict_proba),
-                           n_trials=self.n_trials, timeout=self.timeout)
-            duration = start-time.time()
+                           n_trials=self.n_trials, timeout=self.timeout, n_jobs=n_jobs)
+            duration = time.process_time_ns() - start
 
             best_models[dataset_name] = \
                 self.evaluate(clone(est).set_params(**study.best_trial.user_attrs['params']), dataset_name,
                               local_cache_dir)[dataset_name]
             
-            best_models[dataset_name]['duration'] = duration
+            best_models[dataset_name]['optuna_duration'] = duration
 
 
         best_models['name'] = est.__class__.__name__
@@ -265,7 +265,9 @@ class Benchmark:
                                                                 random_state=random_state)
 
             new_est = clone(est)
+            start = time.process_time_ns()
             new_est.fit(X_train, y_train)
+            duration = time.process_time_ns() - start
 
             y_pred = new_est.predict(X_test)
             if hasattr(new_est, "predict_proba"):
@@ -285,6 +287,7 @@ class Benchmark:
                 'prec': prec,
                 'rec': rec,
                 'auroc': auroc,
+                'duration': duration,
                 'f1_score': f1_score(y_test, y_pred),
                 'auprc': auc(rec, prec)
             }
