@@ -279,6 +279,20 @@ class Benchmark:
             auroc = roc_auc_score(y_test, yproba)
             # average_precision_score(y_test,yproba)
             prec, rec, _ = precision_recall_curve(y_test, yproba)
+
+            ###########
+            y_pred_train = new_est.predict(X_train)
+            if hasattr(new_est, "predict_proba"):
+                yproba_train = new_est.predict_proba(X_train)[:, 1]
+            else:
+                yproba_train = y_pred_train
+
+            fpr_train, tpr_train, _ = roc_curve(y_train, yproba_train)
+            auroc_train = roc_auc_score(y_train, yproba_train)
+            # average_precision_score(y_test,yproba)
+            prec_train, rec_train, _ = precision_recall_curve(y_train, yproba_train)
+
+
             results[dataset_name] = {
                 'dataset': dataset_name,
                 'classifier': new_est,
@@ -287,6 +301,11 @@ class Benchmark:
                 'prec': prec,
                 'rec': rec,
                 'auroc': auroc,
+                'fpr_train': fpr_train,
+                'tpr_train': tpr_train,
+                'prec_train': prec_train,
+                'rec_train': rec_train,
+                'auroc_train': auroc_train,
                 'duration': duration,
                 'f1_score': f1_score(y_test, y_pred),
                 'auprc': auc(rec, prec)
