@@ -176,7 +176,7 @@ class Benchmark:
         dataset = Dataset(self._fullname(dataset_name))
         return dataset.load_dataset(separate_target=separate_target, local_cache_dir=local_cache_dir)
 
-    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None, use_predict_proba=False, n_jobs=1, force_terminate = None):
+    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None, use_predict_proba=False, n_jobs=1,  terminate_signal_timer=None):
         '''
         The method that optimizes hyper-parameters for a single or multiple DIGEN datasets.
 
@@ -229,8 +229,24 @@ class Benchmark:
                                                                 random_state=random_state)
 
             start = time.process_time_ns()
-            study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state, use_predict_proba=use_predict_proba),
+
+            if terminate_signal_timer is None:
+                study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state, use_predict_proba=use_predict_proba),
                            n_trials=self.n_trials, timeout=self.timeout, n_jobs=n_jobs)
+            else:
+                # Start the timer. Once 5 seconds are over, a SIGALRM signal is sent.
+                signal.alarm(terminate_signal_timer)    
+                # This try/except loop ensures that 
+                #   you'll catch TimeoutException when it's sent.
+                try:
+                    study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state, use_predict_proba=use_predict_proba),
+                           n_trials=self.n_trials, timeout=self.timeout, n_jobs=n_jobs) # Whatever your function that might hang
+                except TimeoutException:
+                    pass #continue the code when training done early.
+                else:
+                    # Reset the alarm
+                    signal.alarm(0)
+            
             duration = time.process_time_ns() - start
 
             best_models[dataset_name] = \
