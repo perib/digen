@@ -40,6 +40,16 @@ from . import initialize, load_datasets
 from .dataset import Dataset
 import time
 
+import signal
+
+class TimeoutException(Exception):   # Custom exception class
+    pass
+# https://stackoverflow.com/questions/25027122/break-the-function-after-certain-time/25027223
+def timeout_handler(signum, frame):   # Custom signal handler
+    raise TimeoutException
+
+# Change the behavior of SIGALRM
+signal.signal(signal.SIGALRM, timeout_handler)
 
 rcParams.update({'figure.autolayout': True})
 
@@ -166,7 +176,7 @@ class Benchmark:
         dataset = Dataset(self._fullname(dataset_name))
         return dataset.load_dataset(separate_target=separate_target, local_cache_dir=local_cache_dir)
 
-    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None, use_predict_proba=False, n_jobs=1):
+    def optimize(self, est, parameter_scopes, datasets=None, storage='sqlite:///default.db', local_cache_dir=None, use_predict_proba=False, n_jobs=1, force_terminate = None):
         '''
         The method that optimizes hyper-parameters for a single or multiple DIGEN datasets.
 
@@ -233,7 +243,7 @@ class Benchmark:
         best_models['name'] = est.__class__.__name__
         return best_models
 
-    def evaluate(self, est, datasets=None, local_cache_dir=None):
+    def evaluate(self, est, datasets=None, local_cache_dir=None, terminate_signal_timer=None):
         '''
         A method that calculates different performance metrics for the ML method with parameters.
         This function doesn't tune the parameters.
@@ -266,7 +276,21 @@ class Benchmark:
 
             new_est = clone(est)
             start = time.process_time_ns()
-            new_est.fit(X_train, y_train)
+            if terminate_signal_timer is None:
+                new_est.fit(X_train, y_train)
+            else:
+                # Start the timer. Once 5 seconds are over, a SIGALRM signal is sent.
+                signal.alarm(terminate_signal_timer)    
+                # This try/except loop ensures that 
+                #   you'll catch TimeoutException when it's sent.
+                try:
+                    new_est.fit(X_train, y_train) # Whatever your function that might hang
+                except TimeoutException:
+                    pass #continue the code when training done early.
+                else:
+                    # Reset the alarm
+                    signal.alarm(0)
+
             duration = time.process_time_ns() - start
 
             y_pred = new_est.predict(X_test)
