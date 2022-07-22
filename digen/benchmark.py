@@ -229,6 +229,7 @@ class Benchmark:
                                                                 random_state=random_state)
 
             start = time.process_time_ns()
+            start_clock = time.time_ns()
 
             if terminate_signal_timer is None:
                 study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state, use_predict_proba=use_predict_proba),
@@ -248,13 +249,14 @@ class Benchmark:
                     signal.alarm(0)
             
             duration = time.process_time_ns() - start
+            duration_clock = time.time_ns() - start_clock
 
             best_models[dataset_name] = \
                 self.evaluate(clone(est).set_params(**study.best_trial.user_attrs['params']), dataset_name,
                               local_cache_dir)[dataset_name]
             
             best_models[dataset_name]['optuna_duration'] = duration
-
+            best_models[dataset_name]['optuna_duration_clock'] = duration_clock
 
         best_models['name'] = est.__class__.__name__
         return best_models
@@ -292,6 +294,7 @@ class Benchmark:
 
             new_est = clone(est)
             start = time.process_time_ns()
+            start_clock = time.time_ns()
             if terminate_signal_timer is None:
                 new_est.fit(X_train, y_train)
             else:
@@ -308,6 +311,7 @@ class Benchmark:
                     signal.alarm(0)
 
             duration = time.process_time_ns() - start
+            duration_clock = time.time_ns() - start_clock
 
             y_pred = new_est.predict(X_test)
             if hasattr(new_est, "predict_proba"):
@@ -347,6 +351,7 @@ class Benchmark:
                 'rec_train': rec_train,
                 'auroc_train': auroc_train,
                 'duration': duration,
+                'duration_clock': duration_clock,
                 'f1_score': f1_score(y_test, y_pred),
                 'auprc': auc(rec, prec)
             }
