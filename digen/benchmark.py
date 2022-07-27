@@ -41,6 +41,7 @@ from .dataset import Dataset
 import time
 
 import signal
+import sys
 
 class TimeoutException(Exception):   # Custom exception class
     pass
@@ -243,7 +244,10 @@ class Benchmark:
                     study.optimize(lambda trial: self._objective(trial, X_train, y_train, est, parameter_scopes, random_state, use_predict_proba=use_predict_proba),
                            n_trials=self.n_trials, timeout=self.timeout, n_jobs=n_jobs) # Whatever your function that might hang
                 except TimeoutException:
-                    pass #continue the code when training done early.
+                    print("OVERTIME ALARM TRIGGERED") #continue the code when training done early.
+                    print("OVERTIME ALARM TRIGGERED")
+                    print("OVERTIME ALARM TRIGGERED")
+                    sys.stdout.flush()
                 else:
                     # Reset the alarm
                     signal.alarm(0)
@@ -305,7 +309,10 @@ class Benchmark:
                 try:
                     new_est.fit(X_train, y_train) # Whatever your function that might hang
                 except TimeoutException:
-                    pass #continue the code when training done early.
+                    print("OVERTIME ALARM TRIGGERED") #continue the code when training done early.
+                    print("OVERTIME ALARM TRIGGERED")
+                    print("OVERTIME ALARM TRIGGERED")
+                    sys.stdout.flush()
                 else:
                     # Reset the alarm
                     signal.alarm(0)
