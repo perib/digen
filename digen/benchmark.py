@@ -245,8 +245,6 @@ class Benchmark:
                            n_trials=self.n_trials, timeout=self.timeout, n_jobs=n_jobs) # Whatever your function that might hang
                 except TimeoutException:
                     print("OVERTIME ALARM TRIGGERED") #continue the code when training done early.
-                    print("OVERTIME ALARM TRIGGERED")
-                    print("OVERTIME ALARM TRIGGERED")
                     sys.stdout.flush()
                 else:
                     # Reset the alarm
@@ -310,8 +308,6 @@ class Benchmark:
                     new_est.fit(X_train, y_train) # Whatever your function that might hang
                 except TimeoutException:
                     print("OVERTIME ALARM TRIGGERED") #continue the code when training done early.
-                    print("OVERTIME ALARM TRIGGERED")
-                    print("OVERTIME ALARM TRIGGERED")
                     sys.stdout.flush()
                 else:
                     # Reset the alarm
